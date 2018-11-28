@@ -136,13 +136,13 @@ export function createAllStyleChildCallbacks(shape, parentCallback) {
   }
 
   keys.forEach(key => {
-    const chCbAtKey = (res, isErr, sagaErrorStack) => {
+    const chCbAtKey = (res, isErr) => {
       if (completed) {
         return
       }
       if (isErr || shouldComplete(res)) {
         parentCallback.cancel()
-        parentCallback(res, isErr, sagaErrorStack)
+        parentCallback(res, isErr)
       } else {
         results[key] = res
         completedCount++

@@ -158,7 +158,7 @@ function runForkEffect(env, { context, fn, args, detached }, cb, { task: parent 
         parent.queue.addTask(child)
         cb(child)
       } else if (child.isAborted()) {
-        parent.queue.abort(child.error(), child.sagaErrorStack())
+        parent.queue.abort(child.error())
       } else {
         cb(child)
       }
@@ -238,14 +238,14 @@ function runRaceEffect(env, effects, cb, { digestEffect }) {
   let completed = false
 
   keys.forEach(key => {
-    const chCbAtKey = (res, isErr, sagaErrorStack) => {
+    const chCbAtKey = (res, isErr) => {
       if (completed) {
         return
       }
       if (isErr || shouldComplete(res)) {
         // Race Auto cancellation
         cb.cancel()
-        cb(res, isErr, sagaErrorStack)
+        cb(res, isErr)
       } else {
         cb.cancel()
         completed = true

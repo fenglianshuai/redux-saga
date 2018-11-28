@@ -67,14 +67,26 @@ function sagaStackToString(sagaStack, crashedEffect) {
 }
 
 export class SagaErrorStack {
-  constructor(crashedEffect) {
+  constructor(originalError, crashedEffect) {
+    this.originalError = originalError
     this.crashedEffect = crashedEffect
     this.sagaStack = []
   }
   add(errorStack) {
     this.sagaStack.push(errorStack)
+    return this
+  }
+  // get plain error?
+  getError() {
+    return this.originalError
   }
   toString() {
     return sagaStackToString(this.sagaStack, this.crashedEffect)
   }
+  // static ensureErrorWrapped(candidate) {
+  //   if (candidate instanceof SagaErrorStack) {
+  //     return new SagaErrorStack(/* params */)
+  //   }
+  //   return
+  // }
 }

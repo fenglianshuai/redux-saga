@@ -9,7 +9,6 @@ export default function newTask(env, mainTask, parentContext, parentEffectId, me
   let status = RUNNING
   let taskResult
   let taskError
-  let taskErrorStack
   let deferredEnd = null
 
   const cancelledDueToErrorTasks = []
@@ -43,7 +42,7 @@ export default function newTask(env, mainTask, parentContext, parentEffectId, me
     }
   }
 
-  function end(result, isErr, sagaErrorStack) {
+  function end(result, isErr) {
     if (!isErr) {
       // The status here may be RUNNING or CANCELLED
       // If the status is CANCELLED, then we do not need to change it here
@@ -54,19 +53,18 @@ export default function newTask(env, mainTask, parentContext, parentEffectId, me
       deferredEnd && deferredEnd.resolve(result)
     } else {
       status = ABORTED
-      sagaErrorStack.add({
+      result.add({
         meta,
         cancelledTasks: cancelledDueToErrorTasks,
       })
 
       if (task.isRoot) {
-        env.onError(result, { sagaStack: sagaErrorStack.toString() })
+        env.onError(result.getError(), { sagaStack: result.toString() })
       }
       taskError = result
-      taskErrorStack = sagaErrorStack
-      deferredEnd && deferredEnd.reject(result)
+      deferredEnd && deferredEnd.reject(result.getError())
     }
-    task.cont(result, isErr, sagaErrorStack)
+    task.cont(result, isErr)
     task.joiners.forEach(j => j.cb(result, isErr))
     task.joiners = null
   }
@@ -87,7 +85,7 @@ export default function newTask(env, mainTask, parentContext, parentEffectId, me
     deferredEnd = deferred()
 
     if (status === ABORTED) {
-      deferredEnd.reject(taskError)
+      deferredEnd.reject(taskError.getError())
     } else if (status !== RUNNING) {
       deferredEnd.resolve(taskResult)
     }
@@ -118,7 +116,6 @@ export default function newTask(env, mainTask, parentContext, parentEffectId, me
     isAborted: () => status === ABORTED,
     result: () => taskResult,
     error: () => taskError,
-    sagaErrorStack: () => taskErrorStack,
   }
 
   return task

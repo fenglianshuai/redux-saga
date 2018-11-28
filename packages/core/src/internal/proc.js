@@ -63,11 +63,11 @@ export default function proc(env, iterator, parentContext, parentEffectId, meta,
     It's a recursive async/continuation function which calls itself
     until the generator terminates or throws
   **/
-  function next(arg, isErr, sagaErrorStack) {
+  function next(arg, isErr) {
     try {
       let result
       if (isErr) {
-        result = iterator.throw(arg)
+        result = iterator.throw(arg.getError())
       } else if (shouldCancel(arg)) {
         /**
           getting TASK_CANCEL automatically cancels the main task
@@ -109,7 +109,8 @@ export default function proc(env, iterator, parentContext, parentEffectId, meta,
         throw error
       }
       mainTask.status = ABORTED
-      mainTask.cont(error, true, sagaErrorStack || new SagaErrorStack())
+      const _err = arg instanceof SagaErrorStack ? arg : new SagaErrorStack(error)
+      mainTask.cont(_err, true)
     }
   }
 
@@ -155,7 +156,7 @@ export default function proc(env, iterator, parentContext, parentEffectId, meta,
     let effectSettled
 
     // Completion callback passed to the appropriate effect runner
-    function currCb(res, isErr, sagaErrorStack) {
+    function currCb(res, isErr) {
       if (effectSettled) {
         return
       }
@@ -164,13 +165,15 @@ export default function proc(env, iterator, parentContext, parentEffectId, meta,
       cb.cancel = noop // defensive measure
       if (env.sagaMonitor) {
         if (isErr) {
-          env.sagaMonitor.effectRejected(effectId, res)
+          env.sagaMonitor.effectRejected(effectId, res instanceof SagaErrorStack ? res.getError() : res)
         } else {
           env.sagaMonitor.effectResolved(effectId, res)
         }
       }
-      const isEffectRunnerError = isErr && !sagaErrorStack
-      cb(res, isErr, isEffectRunnerError ? new SagaErrorStack(effect) : sagaErrorStack)
+      // TODO make ensure is
+      const result = isErr && !(res instanceof SagaErrorStack) ? new SagaErrorStack(res, effect) : res
+
+      cb(result, isErr)
     }
     // tracks down the current cancel
     currCb.cancel = noop
